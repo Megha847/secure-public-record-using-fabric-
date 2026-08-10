@@ -56,6 +56,7 @@ router.post(
         size: req.file.size,
         hash,
         securityMethod: req.body.securityMethod,
+        blockchainFramework: req.body.blockchainFramework || "Hyperledger Fabric",
         verificationStatus: "Pending",
         blockchainTransactionId: chainTx.transactionId,
         blockchainTimestamp: chainTx.timestamp,

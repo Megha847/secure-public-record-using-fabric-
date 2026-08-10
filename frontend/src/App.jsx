@@ -538,7 +538,8 @@ function UploadRecord() {
         ["Record ID", result.record.recordId],
         ["SHA-256 Hash", result.record.hash],
         ["Transaction ID", result.blockchain.transactionId],
-        ["Security Method", result.record.securityMethod]
+        ["Security Method", result.record.securityMethod],
+        ["Blockchain Framework", result.record.blockchainFramework || "Hyperledger Fabric"]
       ]} />}
     </div>
   );
@@ -567,7 +568,7 @@ function AdminPanel() {
       <div className="overflow-auto">
         <table className="min-w-[1100px] w-full text-left text-sm">
           <thead className="bg-ink text-xs uppercase text-white">
-            <tr>{["Record ID", "Citizen Name", "Record Type", "Upload Date", "Security Method", "Verification Status", "Blockchain Transaction ID"].map(h => <th key={h} className="px-4 py-3">{h}</th>)}</tr>
+            <tr>{["Record ID", "Citizen Name", "Record Type", "Upload Date", "Security Method", "Blockchain Framework", "Verification Status", "Blockchain Transaction ID"].map(h => <th key={h} className="px-4 py-3">{h}</th>)}</tr>
           </thead>
           <tbody>
             {records.map(record => (
@@ -577,6 +578,7 @@ function AdminPanel() {
                 <td className="px-4 py-3">{record.recordType}</td>
                 <td className="px-4 py-3">{new Date(record.createdAt).toLocaleDateString()}</td>
                 <td className="px-4 py-3">{record.securityMethod}</td>
+                <td className="px-4 py-3 font-bold text-violet-700">{record.blockchainFramework || "Hyperledger Fabric"}</td>
                 <td className="px-4 py-3"><StatusPill status={record.verificationStatus} /></td>
                 <td className="px-4 py-3 font-mono text-xs">{record.blockchainTransactionId}</td>
               </tr>
@@ -635,6 +637,7 @@ function Performance() {
   const [data, setData] = useState([]);
   const [performanceInfo, setPerformanceInfo] = useState(null);
   const [showExplanation, setShowExplanation] = useState(false);
+  const [showFrameworkInfo, setShowFrameworkInfo] = useState(false);
   const [graphZoom, setGraphZoom] = useState(100);
   const [selectedGraph, setSelectedGraph] = useState("latency");
   const graphOptions = [
@@ -642,7 +645,8 @@ function Performance() {
     { key: "throughput", title: "Throughput", unit: performanceInfo?.units?.throughput || "transactions/min", color: "#F9735B" },
     { key: "scalability", title: "Scalability", unit: performanceInfo?.units?.scalability || "score/100", color: "#7C3AED" },
     { key: "securityScore", title: "Security Score", unit: performanceInfo?.units?.securityScore || "score/100", color: "#111827" },
-    { key: "combined", title: "Combined Comparison", unit: "mixed units", color: "#00A884" }
+    { key: "combined", title: "Combined Comparison", unit: "mixed units", color: "#00A884" },
+    { key: "framework", title: "Framework Comparison", unit: "score/100", color: "#7C3AED" }
   ];
   const activeGraph = graphOptions.find(option => option.key === selectedGraph) || graphOptions[0];
   useEffect(() => {
@@ -679,6 +683,12 @@ function Performance() {
             >
               Explain Graph <ChevronRight size={18} />
             </button>
+            <button
+              onClick={() => setShowFrameworkInfo(true)}
+              className="inline-flex items-center gap-2 rounded-lg bg-violet px-4 py-3 text-sm font-extrabold text-white transition hover:bg-violet-800"
+            >
+              Ganache vs Fabric <ChevronRight size={18} />
+            </button>
           </div>
         </div>
       </section>
@@ -706,6 +716,11 @@ function Performance() {
                   Best security: AES + ZKP
                 </div>
               )}
+              {selectedGraph === "framework" && (
+                <div className="rounded-lg bg-violet-50 px-4 py-3 text-sm font-bold text-violet-700">
+                  Best framework: Hyperledger Fabric
+                </div>
+              )}
             </div>
             {selectedGraph === "combined" && (
               <div className="mb-4 grid gap-2 text-xs font-extrabold text-graphite sm:grid-cols-4">
@@ -717,17 +732,26 @@ function Performance() {
             )}
             <div className="h-[32rem] rounded-lg border border-white/60 bg-white/70 p-3">
             <ResponsiveContainer>
-              <BarChart data={data}>
+              <BarChart data={selectedGraph === "framework" ? performanceInfo?.frameworkComparison || [] : data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#dbe5ee" />
-                <XAxis dataKey="method" />
+                <XAxis dataKey={selectedGraph === "framework" ? "framework" : "method"} />
                 <YAxis />
                 <Tooltip formatter={(value, name) => {
                   const units = performanceInfo?.units || {};
+                  if (selectedGraph === "framework") return [`${value} score/100`, name];
                   const unit = selectedGraph === "combined" ? units[name] || units.securityScore || "" : activeGraph.unit;
                   return [`${value} ${unit}`, name];
                 }} />
-                {selectedGraph === "combined" && <Legend />}
-                {selectedGraph === "combined" ? (
+                {(selectedGraph === "combined" || selectedGraph === "framework") && <Legend />}
+                {selectedGraph === "framework" ? (
+                  <>
+                    <Bar dataKey="privacy" fill="#14B8A6" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="governance" fill="#7C3AED" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="throughput" fill="#F9735B" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="auditability" fill="#2563EB" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="suitability" fill="#111827" radius={[8, 8, 0, 0]} />
+                  </>
+                ) : selectedGraph === "combined" ? (
                   <>
                     <Bar dataKey="latency" fill="#14B8A6" radius={[8, 8, 0, 0]} />
                     <Bar dataKey="throughput" fill="#F9735B" radius={[8, 8, 0, 0]} />
@@ -744,6 +768,7 @@ function Performance() {
         </div>
       </div>
       {showExplanation && <GraphExplanationDrawer performanceInfo={performanceInfo} onClose={() => setShowExplanation(false)} />}
+      {showFrameworkInfo && <FrameworkExplanationDrawer performanceInfo={performanceInfo} onClose={() => setShowFrameworkInfo(false)} />}
     </div>
   );
 }
@@ -797,6 +822,74 @@ function GraphExplanationDrawer({ performanceInfo, onClose }) {
             Decision: {performanceInfo.decision}
           </div>
         )}
+      </motion.aside>
+    </div>
+  );
+}
+
+function FrameworkExplanationDrawer({ performanceInfo, onClose }) {
+  const comparison = [
+    ["Network Type", "Local Ethereum-style test blockchain", "Permissioned enterprise blockchain"],
+    ["Identity", "Wallet/address based", "Certificate and MSP based identity"],
+    ["Privacy", "Lower privacy for government-style records", "Private channels and controlled participants"],
+    ["Governance", "Good for testing smart contracts", "Strong organization-based governance"],
+    ["Use Case Fit", "Best for Ethereum DApp testing", "Best for government/public record verification"]
+  ];
+
+  return (
+    <div className="fixed inset-0 z-40 bg-ink/30 backdrop-blur-sm">
+      <motion.aside
+        initial={{ x: 460, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        className="ml-auto h-full w-full max-w-2xl overflow-auto bg-white p-6 shadow-2xl"
+      >
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-extrabold uppercase text-violet">Blockchain Framework Theory</p>
+            <h3 className="text-2xl font-extrabold">Ganache Ethereum vs Hyperledger Fabric</h3>
+          </div>
+          <button onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-extrabold text-graphite hover:border-ink hover:text-ink">
+            Close
+          </button>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-lg border border-orange-200 bg-orange-50 p-5">
+            <h4 className="text-lg font-extrabold text-orange-800">Ganache Ethereum</h4>
+            <p className="mt-3 leading-7 text-orange-900">
+              Ganache is mainly used as a local Ethereum blockchain for development and testing. It is useful for Solidity smart contracts and quick DApp experiments, but it represents a public Ethereum-style model where privacy, identity governance, and organization-level control are not as strong for government records.
+            </p>
+          </div>
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-5">
+            <h4 className="text-lg font-extrabold text-emerald-800">Hyperledger Fabric</h4>
+            <p className="mt-3 leading-7 text-emerald-900">
+              Hyperledger Fabric is permissioned and enterprise-focused. It supports certificate identities, private channels, organization policies, and controlled access. That makes it better for public record verification because government departments need privacy, auditability, and trusted participants.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 overflow-hidden rounded-lg border border-slate-200">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-ink text-white">
+              <tr>
+                {["Point", "Ganache Ethereum", "Hyperledger Fabric"].map(head => <th key={head} className="px-4 py-3">{head}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {comparison.map(row => (
+                <tr key={row[0]} className="border-t border-slate-100">
+                  <td className="px-4 py-3 font-extrabold">{row[0]}</td>
+                  <td className="px-4 py-3 text-graphite">{row[1]}</td>
+                  <td className="px-4 py-3 font-semibold text-emerald-800">{row[2]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-6 rounded-lg border border-violet-200 bg-violet-50 p-5 text-sm font-semibold leading-7 text-violet-900">
+          Decision: {performanceInfo?.frameworkDecision || "Hyperledger Fabric is best for this project because it is permissioned, private, identity-based, and suitable for enterprise/government governance."}
+        </div>
       </motion.aside>
     </div>
   );

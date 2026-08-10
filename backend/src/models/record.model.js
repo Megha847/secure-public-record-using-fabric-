@@ -27,6 +27,7 @@ const recordSchema = new mongoose.Schema(
     size: { type: Number, required: true },
     hash: { type: String, required: true, unique: true, index: true },
     securityMethod: { type: String, enum: ["Traditional", "AES", "AES + ZKP"], required: true },
+    blockchainFramework: { type: String, enum: ["Ganache Ethereum", "Hyperledger Fabric"], default: "Hyperledger Fabric" },
     verificationStatus: { type: String, enum: ["Pending", "Verified", "Tampered"], default: "Pending" },
     blockchainTransactionId: { type: String, required: true },
     blockchainTimestamp: { type: Date, required: true },

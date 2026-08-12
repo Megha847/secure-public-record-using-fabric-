@@ -145,12 +145,37 @@ http://<laptop-ip>:5173
 ```
 
 6. Upload a record from the laptop or phone. The QR URL will use the same host from which the app is opened.
-7. On Android, open:
+7. Open Google Lens, Google QR scanner, or the phone Camera app and scan the generated QR code.
 
-```text
-http://<laptop-ip>:5173/scanner
-```
-
-8. Allow camera permission and scan the generated QR code.
+8. The phone opens the public verification page directly and displays the record details.
 
 The app also includes a web manifest, so Android Chrome can install it from "Add to Home screen" for an app-like demo.
+
+## Netlify Frontend Deployment
+
+Netlify is best for deploying the React frontend. The Node/Express API, MongoDB, and Hyperledger Fabric network must still run on a backend host such as Render, Railway, a VPS, or your Ubuntu demo machine exposed with a secure tunnel.
+
+1. Push the project to GitHub.
+2. In Netlify, choose "Add new site" > "Import an existing project".
+3. Select the GitHub repository.
+4. The included `netlify.toml` sets:
+
+```text
+Base directory: frontend
+Build command: npm run build
+Publish directory: frontend/dist
+```
+
+5. Add this Netlify environment variable:
+
+```text
+VITE_API_URL=https://your-public-backend-url
+```
+
+6. Deploy the site. After deployment, upload a document and the QR code will point to:
+
+```text
+https://your-netlify-site.netlify.app/verify/<recordId>
+```
+
+Important: if the backend is only running on `localhost:5000`, a phone or Netlify site cannot fetch record details. For a final demo, make the backend public and set `VITE_API_URL` to that public API URL.

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Html5QrcodeScanner } from "html5-qrcode";
 import { QRCodeCanvas } from "qrcode.react";
 import {
   Activity,
@@ -16,7 +15,6 @@ import {
   Fingerprint,
   GitBranch,
   QrCode,
-  ScanLine,
   KeyRound,
   Layers3,
   LayoutDashboard,
@@ -110,10 +108,6 @@ function App() {
     return <PublicVerifyPage recordId={decodeURIComponent(publicPath.split("/verify/")[1] || "")} />;
   }
 
-  if (publicPath === "/scanner") {
-    return <QRScannerPage />;
-  }
-
   if (!auth) {
     return showLogin ? <LoginScreen onLogin={setAuth} onBack={() => setShowLogin(false)} /> : <WelcomeScreen onContinue={() => setShowLogin(true)} />;
   }
@@ -131,7 +125,6 @@ function App() {
           {view === "Upload" && <UploadRecord />}
           {view === "Admin Panel" && <AdminPanel />}
           {view === "Verification" && <Verification />}
-          {view === "QR Scanner" && <QRScannerPage embedded />}
           {view === "Performance" && <Performance />}
           {view === "Explorer" && <Explorer />}
         </main>
@@ -284,7 +277,6 @@ function Sidebar({ user, view, setView, onLogout }) {
     ["Upload", UploadCloud],
     ["Admin Panel", FileCheck2],
     ["Verification", FileSearch],
-    ["QR Scanner", ScanLine],
     ["Performance", BarChart3],
     ["Explorer", Blocks]
   ];
@@ -331,7 +323,7 @@ function Topbar({ title, user }) {
 }
 
 function MobileNav({ view, setView }) {
-  const views = ["Dashboard", "Project Blueprint", "Upload", "Admin Panel", "Verification", "QR Scanner", "Performance", "Explorer"];
+  const views = ["Dashboard", "Project Blueprint", "Upload", "Admin Panel", "Verification", "Performance", "Explorer"];
   return (
     <div className="mb-5 block lg:hidden">
       <select
@@ -794,49 +786,6 @@ function PublicVerifyPage({ recordId }) {
       </main>
     </div>
   );
-}
-
-function QRScannerPage({ embedded = false }) {
-  const [message, setMessage] = useState("Point the mobile camera at a generated verification QR code.");
-  const scannerId = embedded ? "qr-scanner-embedded" : "qr-scanner-public";
-
-  useEffect(() => {
-    const scanner = new Html5QrcodeScanner(scannerId, { fps: 10, qrbox: { width: 260, height: 260 } }, false);
-    scanner.render(
-      decodedText => {
-        setMessage(`Opening ${decodedText}`);
-        if (decodedText.startsWith("http")) {
-          window.location.href = decodedText;
-        } else {
-          window.location.href = `/verify/${encodeURIComponent(decodedText)}`;
-        }
-      },
-      () => {}
-    );
-
-    return () => {
-      scanner.clear().catch(() => {});
-    };
-  }, [scannerId]);
-
-  const content = (
-    <div className="mx-auto max-w-4xl">
-      <section className="relative overflow-hidden rounded-lg bg-ink p-6 text-white shadow-glass">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(0,168,132,0.42),transparent_32%),radial-gradient(circle_at_82%_0%,rgba(249,115,91,0.32),transparent_30%)]" />
-        <div className="relative">
-          <p className="text-sm font-extrabold uppercase text-mint">Mobile QR Scanner</p>
-          <h1 className="mt-3 text-3xl font-extrabold">Scan QR to Verify Record</h1>
-          <p className="mt-3 text-slate-300">{message}</p>
-        </div>
-      </section>
-      <div className="mt-5 colored-panel rounded-lg p-5">
-        <div id={scannerId} className="overflow-hidden rounded-lg bg-white p-3" />
-      </div>
-    </div>
-  );
-
-  if (embedded) return content;
-  return <div className="app-shell min-h-screen px-4 py-8">{content}</div>;
 }
 
 function Performance() {

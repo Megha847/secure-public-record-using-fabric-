@@ -112,4 +112,23 @@ router.get("/", authenticate, async (req, res, next) => {
   }
 });
 
+router.get("/:id", async (req, res, next) => {
+  try {
+    const record = await Record.findOne({ recordId: req.params.id })
+      .select("-filePath -uploadedBy -__v")
+      .lean();
+
+    if (!record) {
+      return res.status(404).json({ message: "Record not found" });
+    }
+
+    res.json({
+      record,
+      verificationUrl: `${process.env.PUBLIC_APP_URL || "http://localhost:5173"}/verify/${record.recordId}`
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

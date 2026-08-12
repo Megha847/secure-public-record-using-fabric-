@@ -1,13 +1,12 @@
 import { Router } from "express";
 import Record from "../models/record.model.js";
-import { authenticate } from "../middleware/auth.js";
 import { uploadPdf } from "../middleware/upload.js";
 import { sha256File } from "../services/hash.service.js";
 import { findAnchoredRecord, getRecordHash, updateVerificationStatus } from "../services/blockchain.service.js";
 
 const router = Router();
 
-router.post("/", authenticate, uploadPdf.single("file"), async (req, res, next) => {
+router.post("/", uploadPdf.single("file"), async (req, res, next) => {
   try {
     const { identifier, recordId } = req.body;
     const lookupValue = identifier || recordId;

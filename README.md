@@ -98,7 +98,59 @@ Production deployments should connect these modes to a managed KMS, encrypted ob
 - `POST /api/auth/login`
 - `GET /api/dashboard`
 - `POST /api/records`
+- `POST /api/upload`
 - `GET /api/records`
+- `GET /api/records/:id`
 - `POST /api/verify`
 - `GET /api/performance`
 - `GET /api/explorer`
+
+## QR Code Verification
+
+After a successful upload, the frontend generates a QR code containing:
+
+```text
+http://<app-host>/verify/<recordId>
+```
+
+The QR can be downloaded as a PNG and printed or attached to a certificate. Scanning the QR opens a public verification page that fetches record metadata and lets the verifier optionally upload a file for SHA-256 comparison.
+
+### Android Phone Demo
+
+1. Connect laptop and Android phone to the same Wi-Fi.
+2. Find the laptop IPv4 address:
+
+```powershell
+ipconfig
+```
+
+3. Start backend:
+
+```powershell
+cd backend
+npm run dev
+```
+
+4. Start frontend:
+
+```powershell
+cd frontend
+npm run dev
+```
+
+5. Open the app on Android Chrome using the laptop IP:
+
+```text
+http://<laptop-ip>:5173
+```
+
+6. Upload a record from the laptop or phone. The QR URL will use the same host from which the app is opened.
+7. On Android, open:
+
+```text
+http://<laptop-ip>:5173/scanner
+```
+
+8. Allow camera permission and scan the generated QR code.
+
+The app also includes a web manifest, so Android Chrome can install it from "Add to Home screen" for an app-like demo.

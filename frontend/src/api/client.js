@@ -1,7 +1,12 @@
 import axios from "axios";
 
+function defaultApiUrl() {
+  const { protocol, hostname } = window.location;
+  return `${protocol}//${hostname}:5000`;
+}
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000"
+  baseURL: import.meta.env.VITE_API_URL || defaultApiUrl()
 });
 
 api.interceptors.request.use(config => {
@@ -11,4 +16,3 @@ api.interceptors.request.use(config => {
   }
   return config;
 });
-

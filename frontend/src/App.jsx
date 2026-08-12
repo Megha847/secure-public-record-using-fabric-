@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { Html5QrcodeScanner } from "html5-qrcode";
+import { QRCodeCanvas } from "qrcode.react";
 import {
   Activity,
   ArrowRight,
@@ -13,6 +15,8 @@ import {
   FileSearch,
   Fingerprint,
   GitBranch,
+  QrCode,
+  ScanLine,
   KeyRound,
   Layers3,
   LayoutDashboard,
@@ -79,13 +83,36 @@ const securityModeDetails = [
 
 const presentationKeywords = ["Tamper Evidence", "Duplicate Detection", "SHA-256", "Permissioned Blockchain", "Role Access", "Audit Trail"];
 
+function verificationUrlFor(recordId, hostOverride = "") {
+  const cleanHost = hostOverride.trim().replace(/\/$/, "");
+  return `${cleanHost || window.location.origin}/verify/${recordId}`;
+}
+
+function downloadCanvasPng(canvasId, fileName) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const link = document.createElement("a");
+  link.download = fileName;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
 function App() {
+  const publicPath = window.location.pathname;
   const [auth, setAuth] = useState(() => {
     const raw = localStorage.getItem("secure-records-user");
     return raw ? JSON.parse(raw) : null;
   });
   const [view, setView] = useState("Dashboard");
   const [showLogin, setShowLogin] = useState(false);
+
+  if (publicPath.startsWith("/verify/")) {
+    return <PublicVerifyPage recordId={decodeURIComponent(publicPath.split("/verify/")[1] || "")} />;
+  }
+
+  if (publicPath === "/scanner") {
+    return <QRScannerPage />;
+  }
 
   if (!auth) {
     return showLogin ? <LoginScreen onLogin={setAuth} onBack={() => setShowLogin(false)} /> : <WelcomeScreen onContinue={() => setShowLogin(true)} />;
@@ -104,6 +131,7 @@ function App() {
           {view === "Upload" && <UploadRecord />}
           {view === "Admin Panel" && <AdminPanel />}
           {view === "Verification" && <Verification />}
+          {view === "QR Scanner" && <QRScannerPage embedded />}
           {view === "Performance" && <Performance />}
           {view === "Explorer" && <Explorer />}
         </main>
@@ -256,6 +284,7 @@ function Sidebar({ user, view, setView, onLogout }) {
     ["Upload", UploadCloud],
     ["Admin Panel", FileCheck2],
     ["Verification", FileSearch],
+    ["QR Scanner", ScanLine],
     ["Performance", BarChart3],
     ["Explorer", Blocks]
   ];
@@ -302,7 +331,7 @@ function Topbar({ title, user }) {
 }
 
 function MobileNav({ view, setView }) {
-  const views = ["Dashboard", "Project Blueprint", "Upload", "Admin Panel", "Verification", "Performance", "Explorer"];
+  const views = ["Dashboard", "Project Blueprint", "Upload", "Admin Panel", "Verification", "QR Scanner", "Performance", "Explorer"];
   return (
     <div className="mb-5 block lg:hidden">
       <select
@@ -541,6 +570,56 @@ function UploadRecord() {
         ["Security Method", result.record.securityMethod],
         ["Blockchain Framework", result.record.blockchainFramework || "Hyperledger Fabric"]
       ]} />}
+      {result && <QRCodePanel recordId={result.record.recordId} />}
+    </div>
+  );
+}
+
+function QRCodePanel({ recordId }) {
+  const [hostOverride, setHostOverride] = useState("");
+  const url = verificationUrlFor(recordId, hostOverride);
+  const canvasId = `qr-${recordId}`;
+
+  return (
+    <div className="mt-5 grid gap-5 rounded-lg border border-emerald-200 bg-emerald-50 p-5 lg:grid-cols-[220px_1fr]">
+      <div className="rounded-lg bg-white p-4 shadow-sm">
+        <QRCodeCanvas id={canvasId} value={url} size={180} level="H" includeMargin />
+      </div>
+      <div>
+        <div className="mb-3 flex items-center gap-2 text-emerald-800">
+          <QrCode size={22} />
+          <h3 className="text-xl font-extrabold">QR Verification Code Generated</h3>
+        </div>
+        <label className="mb-3 block text-sm font-extrabold text-emerald-900">
+          Phone QR Host
+          <input
+            className="mt-2 w-full rounded-lg border border-emerald-200 bg-white px-3 py-3 font-mono text-xs text-ink outline-none focus:border-mint"
+            placeholder="Example: http://192.168.1.5:5173"
+            value={hostOverride}
+            onChange={event => setHostOverride(event.target.value)}
+          />
+        </label>
+        <p className="break-all rounded-lg bg-white/80 p-3 font-mono text-xs text-graphite">{url}</p>
+        <p className="mt-2 text-xs font-semibold leading-5 text-emerald-900">
+          For phone scanning, use your laptop Wi-Fi IP instead of localhost. The phone and laptop must be on the same Wi-Fi.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => downloadCanvasPng(canvasId, `${recordId}-verification-qr.png`)}
+            className="rounded-lg bg-ink px-4 py-3 text-sm font-extrabold text-white transition hover:bg-black"
+          >
+            Download QR PNG
+          </button>
+          <button
+            type="button"
+            onClick={() => window.open(url, "_blank")}
+            className="rounded-lg border border-emerald-300 bg-white px-4 py-3 text-sm font-extrabold text-emerald-800 transition hover:bg-emerald-100"
+          >
+            Open Verify Page
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -631,6 +710,133 @@ function Verification() {
       </div>
     </div>
   );
+}
+
+function PublicVerifyPage({ recordId }) {
+  const [record, setRecord] = useState(null);
+  const [verifyResult, setVerifyResult] = useState(null);
+  const [file, setFile] = useState(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    api.get(`/api/records/${recordId}`)
+      .then(res => {
+        setRecord(res.data.record);
+        setError("");
+      })
+      .catch(err => setError(err.response?.data?.message || "Record not found"))
+      .finally(() => setLoading(false));
+  }, [recordId]);
+
+  async function compareFile(event) {
+    event.preventDefault();
+    if (!file) return;
+    const body = new FormData();
+    body.append("recordId", recordId);
+    body.append("file", file);
+    try {
+      const { data } = await api.post("/api/verify", body);
+      setVerifyResult(data);
+    } catch (err) {
+      setError(err.response?.data?.message || "File verification failed");
+    }
+  }
+
+  return (
+    <div className="app-shell min-h-screen px-4 py-8">
+      <main className="mx-auto max-w-5xl">
+        <section className="relative overflow-hidden rounded-lg bg-ink p-6 text-white shadow-glass">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(0,168,132,0.42),transparent_32%),radial-gradient(circle_at_82%_0%,rgba(124,58,237,0.32),transparent_30%)]" />
+          <div className="relative">
+            <p className="text-sm font-extrabold uppercase text-mint">QR Blockchain Verification</p>
+            <h1 className="mt-3 text-3xl font-extrabold">Public Record Authenticity Check</h1>
+            <p className="mt-3 text-slate-300">Record ID: <span className="font-mono text-white">{recordId}</span></p>
+          </div>
+        </section>
+
+        <div className="mt-5 colored-panel rounded-lg p-5">
+          {loading && <SkeletonGrid />}
+          {error && <p className="rounded-lg bg-red-50 px-4 py-3 font-bold text-red-700">{error}</p>}
+          {record && (
+            <div className="grid gap-5 lg:grid-cols-[1fr_0.8fr]">
+              <div>
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 font-extrabold text-emerald-700">
+                  <CheckCircle2 size={18} /> Authentic Document
+                </div>
+                <ResultCard title="Ledger Metadata" tone="success" rows={[
+                  ["Citizen Name", record.citizenName],
+                  ["Record Type", record.recordType],
+                  ["Record Number", record.recordNumber],
+                  ["SHA-256 Hash", record.hash],
+                  ["Security Method", record.securityMethod],
+                  ["Framework", record.blockchainFramework || "Hyperledger Fabric"],
+                  ["Transaction ID", record.blockchainTransactionId],
+                  ["Timestamp", new Date(record.blockchainTimestamp).toLocaleString()],
+                  ["Status", record.verificationStatus]
+                ]} />
+              </div>
+              <form onSubmit={compareFile} className="rounded-lg border border-slate-200 bg-white/80 p-5">
+                <h3 className="text-xl font-extrabold">Compare Uploaded File</h3>
+                <p className="mt-2 text-sm leading-6 text-graphite">Upload the same document to compare its current SHA-256 hash with the hash stored on Hyperledger Fabric.</p>
+                <input className="mt-4 w-full rounded-lg border border-slate-200 bg-white px-3 py-3" type="file" accept="application/pdf,image/jpeg,image/png" onChange={event => setFile(event.target.files[0])} />
+                <button className="mt-4 w-full rounded-lg bg-ink px-4 py-3 font-extrabold text-white">Compare Hash</button>
+                {verifyResult && (
+                  <div className={`mt-4 rounded-lg border p-4 font-extrabold ${verifyResult.result === "Verified" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-800"}`}>
+                    {verifyResult.result === "Verified" ? "Authentic Document" : "Tampered Document"}
+                  </div>
+                )}
+              </form>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function QRScannerPage({ embedded = false }) {
+  const [message, setMessage] = useState("Point the mobile camera at a generated verification QR code.");
+  const scannerId = embedded ? "qr-scanner-embedded" : "qr-scanner-public";
+
+  useEffect(() => {
+    const scanner = new Html5QrcodeScanner(scannerId, { fps: 10, qrbox: { width: 260, height: 260 } }, false);
+    scanner.render(
+      decodedText => {
+        setMessage(`Opening ${decodedText}`);
+        if (decodedText.startsWith("http")) {
+          window.location.href = decodedText;
+        } else {
+          window.location.href = `/verify/${encodeURIComponent(decodedText)}`;
+        }
+      },
+      () => {}
+    );
+
+    return () => {
+      scanner.clear().catch(() => {});
+    };
+  }, [scannerId]);
+
+  const content = (
+    <div className="mx-auto max-w-4xl">
+      <section className="relative overflow-hidden rounded-lg bg-ink p-6 text-white shadow-glass">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(0,168,132,0.42),transparent_32%),radial-gradient(circle_at_82%_0%,rgba(249,115,91,0.32),transparent_30%)]" />
+        <div className="relative">
+          <p className="text-sm font-extrabold uppercase text-mint">Mobile QR Scanner</p>
+          <h1 className="mt-3 text-3xl font-extrabold">Scan QR to Verify Record</h1>
+          <p className="mt-3 text-slate-300">{message}</p>
+        </div>
+      </section>
+      <div className="mt-5 colored-panel rounded-lg p-5">
+        <div id={scannerId} className="overflow-hidden rounded-lg bg-white p-3" />
+      </div>
+    </div>
+  );
+
+  if (embedded) return content;
+  return <div className="app-shell min-h-screen px-4 py-8">{content}</div>;
 }
 
 function Performance() {

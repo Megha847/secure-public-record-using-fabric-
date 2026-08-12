@@ -24,7 +24,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || "*", credentials: true }));
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
@@ -46,6 +46,7 @@ app.get("/health", (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/records", recordRoutes);
+app.use("/api/upload", recordRoutes);
 app.use("/api/verify", verificationRoutes);
 app.use("/api/performance", performanceRoutes);
 app.use("/api/explorer", explorerRoutes);
@@ -61,4 +62,3 @@ await seedDemoUsers();
 app.listen(port, () => {
   console.log(`Secure Public Records API listening on port ${port}`);
 });
-

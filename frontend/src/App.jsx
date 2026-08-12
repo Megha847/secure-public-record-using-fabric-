@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { QRCodeCanvas } from "qrcode.react";
 import {
   Activity,
   ArrowRight,
@@ -14,7 +13,6 @@ import {
   FileSearch,
   Fingerprint,
   GitBranch,
-  QrCode,
   KeyRound,
   Layers3,
   LayoutDashboard,
@@ -80,20 +78,6 @@ const securityModeDetails = [
 ];
 
 const presentationKeywords = ["Tamper Evidence", "Duplicate Detection", "SHA-256", "Permissioned Blockchain", "Role Access", "Audit Trail"];
-
-function verificationUrlFor(recordId, hostOverride = "") {
-  const cleanHost = hostOverride.trim().replace(/\/$/, "");
-  return `${cleanHost || window.location.origin}/verify/${recordId}`;
-}
-
-function downloadCanvasPng(canvasId, fileName) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  const link = document.createElement("a");
-  link.download = fileName;
-  link.href = canvas.toDataURL("image/png");
-  link.click();
-}
 
 function App() {
   const publicPath = window.location.pathname;
@@ -562,56 +546,6 @@ function UploadRecord() {
         ["Security Method", result.record.securityMethod],
         ["Blockchain Framework", result.record.blockchainFramework || "Hyperledger Fabric"]
       ]} />}
-      {result && <QRCodePanel recordId={result.record.recordId} />}
-    </div>
-  );
-}
-
-function QRCodePanel({ recordId }) {
-  const [hostOverride, setHostOverride] = useState("");
-  const url = verificationUrlFor(recordId, hostOverride);
-  const canvasId = `qr-${recordId}`;
-
-  return (
-    <div className="mt-5 grid gap-5 rounded-lg border border-emerald-200 bg-emerald-50 p-5 lg:grid-cols-[220px_1fr]">
-      <div className="rounded-lg bg-white p-4 shadow-sm">
-        <QRCodeCanvas id={canvasId} value={url} size={180} level="H" includeMargin />
-      </div>
-      <div>
-        <div className="mb-3 flex items-center gap-2 text-emerald-800">
-          <QrCode size={22} />
-          <h3 className="text-xl font-extrabold">QR Verification Code Generated</h3>
-        </div>
-        <label className="mb-3 block text-sm font-extrabold text-emerald-900">
-          Phone QR Host
-          <input
-            className="mt-2 w-full rounded-lg border border-emerald-200 bg-white px-3 py-3 font-mono text-xs text-ink outline-none focus:border-mint"
-            placeholder="Example: http://192.168.1.5:5173"
-            value={hostOverride}
-            onChange={event => setHostOverride(event.target.value)}
-          />
-        </label>
-        <p className="break-all rounded-lg bg-white/80 p-3 font-mono text-xs text-graphite">{url}</p>
-        <p className="mt-2 text-xs font-semibold leading-5 text-emerald-900">
-          For phone scanning, use your laptop Wi-Fi IP instead of localhost. The phone and laptop must be on the same Wi-Fi.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => downloadCanvasPng(canvasId, `${recordId}-verification-qr.png`)}
-            className="rounded-lg bg-ink px-4 py-3 text-sm font-extrabold text-white transition hover:bg-black"
-          >
-            Download QR PNG
-          </button>
-          <button
-            type="button"
-            onClick={() => window.open(url, "_blank")}
-            className="rounded-lg border border-emerald-300 bg-white px-4 py-3 text-sm font-extrabold text-emerald-800 transition hover:bg-emerald-100"
-          >
-            Open Verify Page
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

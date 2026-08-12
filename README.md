@@ -105,17 +105,7 @@ Production deployments should connect these modes to a managed KMS, encrypted ob
 - `GET /api/performance`
 - `GET /api/explorer`
 
-## QR Code Verification
-
-After a successful upload, the frontend generates a QR code containing:
-
-```text
-http://<app-host>/verify/<recordId>
-```
-
-The QR can be downloaded as a PNG and printed or attached to a certificate. Scanning the QR opens a public verification page that fetches record metadata and lets the verifier optionally upload a file for SHA-256 comparison.
-
-### Android Phone Demo
+## Mobile Demo
 
 1. Connect laptop and Android phone to the same Wi-Fi.
 2. Find the laptop IPv4 address:
@@ -144,10 +134,8 @@ npm run dev
 http://<laptop-ip>:5173
 ```
 
-6. Upload a record from the laptop or phone. The QR URL will use the same host from which the app is opened.
-7. Open Google Lens, Google QR scanner, or the phone Camera app and scan the generated QR code.
-
-8. The phone opens the public verification page directly and displays the record details.
+6. Login on the phone and use the same dashboard, upload, admin panel, verification, performance, and explorer screens.
+7. To verify a document on mobile, open the Verification page and enter the Record ID or SHA-256 hash.
 
 The app also includes a web manifest, so Android Chrome can install it from "Add to Home screen" for an app-like demo.
 
@@ -172,10 +160,10 @@ Publish directory: frontend/dist
 VITE_API_URL=https://your-public-backend-url
 ```
 
-6. Deploy the site. After deployment, upload a document and the QR code will point to:
+6. Deploy the site. After deployment, open the frontend URL on desktop or mobile:
 
 ```text
-https://your-netlify-site.netlify.app/verify/<recordId>
+https://your-netlify-site.netlify.app
 ```
 
 Important: if the backend is only running on `localhost:5000`, a phone or Netlify site cannot fetch record details. For a final demo, make the backend public and set `VITE_API_URL` to that public API URL.
